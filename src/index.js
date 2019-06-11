@@ -1,12 +1,38 @@
+import { Lynx } from 'ual-lynx';
+import { Scatter } from 'ual-scatter';
+import { UALProvider, withUAL } from 'ual-reactjs-renderer';
+
 import React from 'react';
 import ReactDOM from 'react-dom';
-import './index.css';
-import App from './App';
-import * as serviceWorker from './serviceWorker';
+import App from './components/App/App';
+import './index.css'
 
-ReactDOM.render(<App />, document.getElementById('root'));
 
-// If you want your app to work offline and load faster, you can change
-// unregister() to register() below. Note this comes with some pitfalls.
-// Learn more about service workers: https://bit.ly/CRA-PWA
-serviceWorker.unregister();
+const UALApp = withUAL(App);
+UALApp.displayName = 'UAL Test App';
+
+const network = {
+    chainId: 'cf057bbfb72640471fd910bcb67639c22df9f92470936cddc1ade0e2f2e7dc4f',
+    rpcEndpoints: [{
+        protocol: 'http',
+        host: 'localhost',
+        port: 8888,
+    }]
+};
+
+const appName = 'My App';
+const lynx = new Lynx([network]);
+const scatter = new Scatter([network], { appName });
+
+ReactDOM.render(
+    <UALProvider chains={[network]} authenticators={[lynx, scatter]} appName={appName}>
+        <UALApp />
+    </UALProvider>,
+    document.getElementById('root'),
+);
+
+
+
+
+
+
