@@ -1,5 +1,5 @@
 import React, { Component } from 'react';
-import { JsonRpc } from 'eosjs';
+import { eosRpc, TokenApi } from '../../service';
 
 const defaultState = {
     activeUser: null,
@@ -15,7 +15,6 @@ class App extends Component {
         super(props);
         this.state = {
             ...defaultState,
-            rpc: new JsonRpc('http://127.0.0.1:8888'),
         };
         this.updateAccountBalance = this.updateAccountBalance.bind(this);
         this.updateAccountName = this.updateAccountName.bind(this);
@@ -44,36 +43,37 @@ class App extends Component {
 
     async updateAccountBalance() {
         try {
-            const account = await this.state.rpc.get_account(this.state.accountName);
-            console.log(account);
-            const accountBalance = account.core_liquid_balance;
-            this.setState({ accountBalance });
+            console.log(await eosRpc.getOneTableRow({
+                code: 'eosio.token',
+                scope: 'seb1',
+                table: 'accounts'
+            }));
+
+            console.log(await eosRpc.getOneTableRow({
+                code: 'eosio.token',
+                scope: 'seb2',
+                table: 'accounts'
+            }));
+            const asset = await eosRpc.getCurrencyBalance({
+                'account': this.state.accountName
+            });
+            this.setState({ accountBalance: asset.amount });
         } catch (e) {
             console.warn(e);
         }
     }
 
     async transfer() {
-        const { accountName, activeUser } = this.state;
+        const { activeUser } = this.state;
 
         try {
-            await activeUser.signTransaction({
-                actions: [{
-                    account: 'eosio.token',
-                    name: 'transfer',
-                    authorization: [{
-                        actor: accountName, // use account that was logged in
-                        permission: 'active',
-                    }],
-                    data: {
-                        from: accountName, // use account that was logged in
-                        to: 'seb2',
-                        memo: 'UAL rocks!',
-                        quantity: '1.0000 EOS',
-                    },
-                }],
-            },
-                { broadcast: true });
+            const tokenApi = new TokenApi(activeUser);
+            await tokenApi.transfer({
+                to: 'seb2',
+                memo: 'UAL rocks!',
+                quantity: '1.0000 EOS',
+
+            });
             this.updateAccountBalance();
         } catch (err) {
             console.warn(err);
@@ -86,7 +86,7 @@ class App extends Component {
                 <span
                     role='button'
                     onClick={this.props.ual.showModal}
-                    className='ual-generic-button'> Show UAL Modal</span>
+                    className='ual-generic-button'> Log In</span>
             </p>
         );
     }
@@ -98,15 +98,15 @@ class App extends Component {
                     role='button'
                     onClick={this.transfer}
                     className='ual-generic-button blue'>
-                    Transfer 1 eos to example
+                    Transfer 1 EOS to Seb2
                 </span>
             </p>
         );
     }
 
     renderLogoutButton() {
-        const { ual: { activeUser, activeAuthenticator, logout } } = this.props;
-        if (!!activeUser && !!activeAuthenticator) {
+        const { ual: { activeAuthenticator, logout } } = this.props;
+        if (!!this.state.activeUser && !!activeAuthenticator) {
             return (
                 <p className='ual-btn-wrapper'>
                     <span
@@ -126,8 +126,8 @@ class App extends Component {
         console.log(`balance: ${accountBalance}, name: ${accountName}`);
         const modalButton = !activeUser && this.renderModalButton();
         const loggedIn = accountName ? `Logged in as ${accountName}` : '';
-        const myBalance = accountBalance ? `Balance: ${accountBalance}` : '';
-        const transferBtn = accountBalance && this.transferBtn();
+        const myBalance = accountBalance ? `Balance: ${accountBalance} EOS` : '';
+        const transferBtn = accountBalance && this.renderTransferButton();
 
         return (
             <div style={{ textAlign: 'center' }}>
