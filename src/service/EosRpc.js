@@ -4,7 +4,15 @@ import { EOSUtil } from '../util';
 
 class EosRpc {
     constructor() {
-        this.rpc = new JsonRpc(process.env.REACT_APP_EOS_HTTP_ENDPOINT);
+        const {
+            REACT_APP_EOS_HTTP_ENDPOINT_PROTOCOL,
+            REACT_APP_EOS_HTTP_ENDPOINT_HOST,
+            REACT_APP_EOS_HTTP_ENDPOINT_PORT,
+        } = process.env;
+
+        this.rpc = new JsonRpc(
+            `${REACT_APP_EOS_HTTP_ENDPOINT_PROTOCOL}://${REACT_APP_EOS_HTTP_ENDPOINT_HOST}:${REACT_APP_EOS_HTTP_ENDPOINT_PORT}`
+        );
     }
 
     async getCurrencyBalance({

@@ -11,12 +11,19 @@ import './index.css'
 const UALApp = withUAL(App);
 UALApp.displayName = 'UAL Test App';
 
+const {
+    REACT_APP_EOS_HTTP_ENDPOINT_PROTOCOL,
+    REACT_APP_EOS_HTTP_ENDPOINT_HOST,
+    REACT_APP_EOS_HTTP_ENDPOINT_PORT,
+    REACT_APP_EOS_CHAIN_ID
+} = process.env;
+
 const network = {
-    chainId: 'cf057bbfb72640471fd910bcb67639c22df9f92470936cddc1ade0e2f2e7dc4f',
+    chainId: REACT_APP_EOS_CHAIN_ID,
     rpcEndpoints: [{
-        protocol: 'http',
-        host: 'localhost',
-        port: 8888,
+        protocol: REACT_APP_EOS_HTTP_ENDPOINT_PROTOCOL,
+        host: REACT_APP_EOS_HTTP_ENDPOINT_HOST,
+        port: REACT_APP_EOS_HTTP_ENDPOINT_PORT,
     }]
 };
 

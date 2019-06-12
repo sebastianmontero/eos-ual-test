@@ -1,5 +1,6 @@
 import React, { Component } from 'react';
-import { eosRpc, TokenApi } from '../../service';
+import { eosRpc, TokenApi, TradeApi } from '../../service';
+import { OrderTypes, OrderStatuses, PaymentMethods, PriceTypes } from '../../const';
 
 const defaultState = {
     activeUser: null,
@@ -20,6 +21,7 @@ class App extends Component {
         this.updateAccountName = this.updateAccountName.bind(this);
         this.renderTransferButton = this.renderTransferButton.bind(this);
         this.transfer = this.transfer.bind(this);
+        this.trade = this.trade.bind(this);
         this.renderModalButton = this.renderModalButton.bind(this);
     }
 
@@ -45,13 +47,13 @@ class App extends Component {
         try {
             console.log(await eosRpc.getOneTableRow({
                 code: 'eosio.token',
-                scope: 'seb1',
+                scope: 'sebastianmb1',
                 table: 'accounts'
             }));
 
             console.log(await eosRpc.getOneTableRow({
                 code: 'eosio.token',
-                scope: 'seb2',
+                scope: 'sebastianmb2',
                 table: 'accounts'
             }));
             const asset = await eosRpc.getCurrencyBalance({
@@ -69,12 +71,61 @@ class App extends Component {
         try {
             const tokenApi = new TokenApi(activeUser);
             await tokenApi.transfer({
-                to: 'seb2',
+                to: 'sebastianmb2',
                 memo: 'UAL rocks!',
                 quantity: '1.0000 EOS',
 
             });
             this.updateAccountBalance();
+        } catch (err) {
+            console.warn(err);
+        }
+    }
+
+    async trade() {
+        const { activeUser } = this.state;
+
+        try {
+            const tradeApi = new TradeApi(activeUser);
+            let { rows } = await tradeApi.getSellOrders();
+            console.log(rows);
+            /* await tradeApi.create({
+                orderType: OrderTypes.SELL,
+                amount: '10.0000 EOS',
+                priceType: PriceTypes.EXACT_PRICE,
+                pricePerEos: '1.00 USD',
+                paymentMethods: [
+                    PaymentMethods.BANK_WIRE,
+                    PaymentMethods.PHYSICAL_CASH,
+                ],
+                minTransaction: '5.0000 EOS',
+            });
+            console.log('Created order');
+            ({ rows } = await tradeApi.getSellOrders());
+            console.log(rows); */
+            for (let row of rows) {
+                console.log(`creator: ${row.creator} status: ${row.order_status}`);
+                if (row.creator == 'sebastianmb1' && row.order_status === OrderStatuses.OPEN) {
+                    /*  await tradeApi.accept({
+                         orderKey: row.order_key,
+                         quantity: '10.0000 EOS'
+                     });
+                     ({ rows } = await tradeApi.getSellOrders());
+                     console.log(rows); */
+                    /* await tradeApi.approvePayment({
+                        orderKey: row.order_key,
+                    });
+                    ({ rows } = await tradeApi.getSellOrders());
+                    console.log(rows); */
+                    console.log('Canceling order');
+                    await tradeApi.cancel({
+                        orderKey: row.order_key,
+                    });
+                    ({ rows } = await tradeApi.getSellOrders());
+                    console.log(rows);
+                    return;
+                }
+            }
         } catch (err) {
             console.warn(err);
         }
@@ -104,6 +155,19 @@ class App extends Component {
         );
     }
 
+    renderTradeButton() {
+        return (
+            <p className='ual-btn-wrapper'>
+                <span
+                    role='button'
+                    onClick={this.trade}
+                    className='ual-generic-button blue'>
+                    Trade
+                </span>
+            </p>
+        );
+    }
+
     renderLogoutButton() {
         const { ual: { activeAuthenticator, logout } } = this.props;
         if (!!this.state.activeUser && !!activeAuthenticator) {
@@ -128,6 +192,7 @@ class App extends Component {
         const loggedIn = accountName ? `Logged in as ${accountName}` : '';
         const myBalance = accountBalance ? `Balance: ${accountBalance} EOS` : '';
         const transferBtn = accountBalance && this.renderTransferButton();
+        const tradeBtn = accountBalance && this.renderTradeButton();
 
         return (
             <div style={{ textAlign: 'center' }}>
@@ -135,6 +200,7 @@ class App extends Component {
                 <h3 className='ual-subtitle'>{loggedIn}</h3>
                 <h4 className='ual-subtitle'>{myBalance}</h4>
                 {transferBtn}
+                {tradeBtn}
                 {this.renderLogoutButton()}
             </div>
         );
