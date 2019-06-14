@@ -1,6 +1,7 @@
 import React, { Component } from 'react';
 import { eosRpc, TokenApi, TradeApi } from '../../service';
 import { OrderTypes, OrderStatuses, PaymentMethods, PriceTypes } from '../../const';
+import { FiatAsset, TokenAsset } from '../../domain';
 
 const defaultState = {
     activeUser: null,
@@ -91,38 +92,38 @@ class App extends Component {
             console.log(rows);
             /* await tradeApi.create({
                 orderType: OrderTypes.SELL,
-                amount: '10.0000 EOS',
+                amount: new TokenAsset(10, 'EOS'),
                 priceType: PriceTypes.EXACT_PRICE,
-                pricePerEos: '1.00 USD',
+                pricePerEos: new FiatAsset(1, 'USD'),
                 paymentMethods: [
-                    PaymentMethods.BANK_WIRE,
-                    PaymentMethods.PHYSICAL_CASH,
+                    PaymentMethods.BANK_WIRE.value,
+                    PaymentMethods.PHYSICAL_CASH.value,
                 ],
-                minTransaction: '5.0000 EOS',
+                minTransaction: new TokenAsset(5, 'EOS'),
             });
             console.log('Created order');
             ({ rows } = await tradeApi.getSellOrders());
             console.log(rows); */
             for (let row of rows) {
-                console.log(`creator: ${row.creator} status: ${row.order_status}`);
-                if (row.creator == 'sebastianmb1' && row.order_status === OrderStatuses.OPEN) {
-                    /*  await tradeApi.accept({
-                         orderKey: row.order_key,
-                         quantity: '10.0000 EOS'
-                     });
-                     ({ rows } = await tradeApi.getSellOrders());
-                     console.log(rows); */
-                    /* await tradeApi.approvePayment({
-                        orderKey: row.order_key,
+                console.log(`creator: ${row.creator} status: ${row.orderStatus}`);
+                if (row.creator == 'sebastianmb1' && row.orderStatus === OrderStatuses.ESCROW) {
+                    /* await tradeApi.accept({
+                        orderKey: row.orderKey,
+                        quantity: new TokenAsset(10, 'EOS'),
                     });
                     ({ rows } = await tradeApi.getSellOrders());
                     console.log(rows); */
-                    console.log('Canceling order');
+                    await tradeApi.approvePayment({
+                        orderKey: row.orderKey,
+                    });
+                    ({ rows } = await tradeApi.getSellOrders());
+                    console.log(rows);
+                    /* console.log('Canceling order');
                     await tradeApi.cancel({
                         orderKey: row.order_key,
                     });
                     ({ rows } = await tradeApi.getSellOrders());
-                    console.log(rows);
+                    console.log(rows); */
                     return;
                 }
             }

@@ -1,6 +1,6 @@
 import { JsonRpc } from 'eosjs';
-import { Asset } from '../domain';
-import { EOSUtil } from '../util';
+import { TokenAsset } from '../domain';
+
 
 class EosRpc {
     constructor() {
@@ -21,7 +21,7 @@ class EosRpc {
         symbol = 'EOS'
     }) {
         const results = await this.rpc.get_currency_balance(contract, account, symbol);
-        return results.length ? EOSUtil.stringToAsset(results[0]) : new Asset(0, symbol);
+        return results.length ? TokenAsset.parse(results[0]) : new TokenAsset(0, symbol);
     }
 
     async getAccount(account) {

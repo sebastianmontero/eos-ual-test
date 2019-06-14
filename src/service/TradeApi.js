@@ -1,5 +1,8 @@
-import { Contracts } from '../const';
+import { Contracts, PriceTypes, Tokens } from '../const';
+import { FiatAsset, TokenAsset } from '../domain';
+import { TimeUtil } from '../util';
 import BaseEosApi from './BaseEosApi';
+import { privateDecrypt } from 'crypto';
 
 class TradeApi extends BaseEosApi {
 
@@ -8,7 +11,7 @@ class TradeApi extends BaseEosApi {
     }
 
     /**
-     * 
+     * All amounts should be Asset objects
      * TODO change from allow_partial to min_transaction when ready in contract
      */
     async create({
@@ -18,10 +21,11 @@ class TradeApi extends BaseEosApi {
         pricePerEos,
         priceVar,
         paymentMethods,
-        minTransaction,
+        minTrx,
     }) {
 
         let actions = [];
+        amount = amount.toString();
         actions.push(
             await this._formatAction({
                 account: Contracts.EOSIO_TOKEN,
@@ -43,10 +47,10 @@ class TradeApi extends BaseEosApi {
                     order_type: orderType,
                     amount,
                     price_type: priceType,
-                    price_per_eos: pricePerEos,
-                    price_var: priceVar,
+                    price_per_eos: priceType === PriceTypes.EXACT_PRICE ? pricePerEos.toString() : new FiatAsset(),
+                    price_var: priceType === PriceTypes.MARKET_VAR ? priceVar : 0,
                     payment_methods: paymentMethods,
-                    allow_partial: minTransaction ? 1 : 0,
+                    allow_partial: minTrx ? 1 : 0,
                 }
             }),
         );
@@ -55,7 +59,7 @@ class TradeApi extends BaseEosApi {
     }
 
     /**
-     * 
+     * All amounts should be asset objects
      * TODO include acceptedPaymentMethod when added in contract
      */
     async accept({
@@ -69,7 +73,7 @@ class TradeApi extends BaseEosApi {
             data: {
                 order_key: orderKey,
                 counterparty: await this.getAccountName(),
-                quantity,
+                quantity: quantity.toString(),
             }
         });
     }
@@ -109,13 +113,44 @@ class TradeApi extends BaseEosApi {
         limit,
         reverse,
     }) {
-        return await this.getTableRows({
+
+        const { rows, more } = await this.getTableRows({
             table: 'orders',
             tableKey,
             lowerBound,
             limit,
             reverse,
         });
+
+        const parsedRows = rows.map((row) => {
+            return {
+                orderKey: row.order_key,
+                creator: row.creator,
+                counterParty: row.counter_party,
+                origAmount: TokenAsset.parse(row.orig_eos_amount),
+                amount: TokenAsset.parse(row.eos_amount),
+                orderValue: FiatAsset.parse(row.order_value_usd),
+                minTrx: TokenAsset.parse(row.min_trx),
+                feePaid: TokenAsset.parse(row.fee_paid),
+                orderType: row.order_type,
+                priceType: row.price_type,
+                pricePerEos: FiatAsset.parse(row.price_per_eos),
+                quantity: new TokenAsset(row.eos_quantity, Tokens.EOS),
+                priceVar: row.price_type === PriceTypes.MARKET_VAR ? Number(row.price_var) : null,
+                paymentMethods: row.payment_methods.map(x => x.toUpperCase()),
+                orderStatus: row.order_status,
+                createdAt: TimeUtil.fromUnixTimestamp(row.created_date),
+                updatedAt: TimeUtil.fromUnixTimestamp(row.updated_date),
+                creatorApprovedPayAt: row.creator_approved_pay ? TimeUtil.fromUnixTimestamp(row.creator_approved_pay) : null,
+                counterPartyApprovedPayAt: row.counterparty_approved_pay ? TimeUtil.fromUnixTimestamp(row.counterparty_approved_pay) : null,
+            };
+        });
+
+        return {
+            rows: parsedRows,
+            more,
+        };
+
     }
 
     async getSellOrders() {
